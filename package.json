@@ -1,0 +1,79 @@
+{
+  "name": "cuechain",
+  "displayName": "CueChain",
+  "description": "CueChain Web3 Code Generator",
+  "version": "0.0.1",
+  "publisher": "yashjain",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.105.0"
+  },
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
+  "categories": [
+    "Other"
+  ],
+
+  "main": "./dist/extension.js",
+
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cuechain-sidebar",
+          "title": "CueChain",
+          "icon": "media/cuechain.svg"
+        }
+      ]
+    },
+    "views": {
+      "cuechain-sidebar": [
+        {
+          "type": "webview",
+          "id": "cuechain.chatView",
+          "name": "Code Generator"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "cuechain.openView",
+        "category": "CueChain",
+        "title": "Open CueChain Sidebar"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "cuechain.openView",
+          "group": "navigation",
+          "when": "view == cuechain.chatView"
+        }
+      ]
+    }
+  },
+
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map"
+  },
+
+  "devDependencies": {
+    "@types/node": "22.x",
+    "@types/vscode": "^1.105.0",
+    "typescript": "^5.9.3",
+    "ts-loader": "^9.5.4",
+    "webpack": "^5.102.0",
+    "webpack-cli": "^6.0.1"
+  },
+
+  "dependencies": {
+    "axios": "^1.13.0",
+    "ethers": "^6.9.0"
+  }
+}
