@@ -683,24 +683,49 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
   </head>
   <body>
     <h3>CueChain Smart Contract Assistant</h3>
+    
+    <!-- Conversation history container -->
+    <div id="conversation-container" class="conversation-container"></div>
 
-    <label for="network">Select Network:</label>
-    <select id="network">
-      <option value="">Select Network</option>
-      <option value="SOLANA" ${savedNetwork === 'SOLANA' ? 'selected' : ''}>SOLANA</option>
-      <option value="ETHEREUM" ${savedNetwork === 'ETHEREUM' ? 'selected' : ''}>ETHEREUM</option>
-      <option value="BINANCE" ${savedNetwork === 'BINANCE' ? 'selected' : ''}>BINANCE</option>
-      <option value="POLYGON" ${savedNetwork === 'POLYGON' ? 'selected' : ''}>POLYGON</option>
-      <option value="AVALANCHE" ${savedNetwork === 'AVALANCHE' ? 'selected' : ''}>AVALANCHE</option>
-    </select>
-
-    <textarea id="prompt" placeholder="Describe your contract..."></textarea>
-
-    <div class="button-group">
-      <button id="generate" disabled>Generate Code</button>
-      <button id="compile" disabled>Compile Code</button>
-      <button id="fixError" disabled>Fix Error</button>
-      <button id="analyze" disabled>Analyze Code</button>
+    <!-- Cursor AI-style prompt container -->
+    <div class="prompt-wrapper">
+      <div class="prompt-background-container">
+        <div class="prompt-container">
+          <textarea id="prompt" placeholder="Describe your contract..."></textarea>
+        </div>
+        
+        <!-- Network and Generate button below input field -->
+        <div class="prompt-controls">
+          <div class="network-selector-wrapper">
+            <button id="networkSelector" class="network-selector" title="Select Network">
+              <span class="network-text">Network</span>
+              <svg class="chevron-down" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <select id="network" class="network-select-hidden">
+              <option value="" ${savedNetwork ? '' : 'selected'}>Network</option>
+              <option value="SOLANA" ${savedNetwork === 'SOLANA' ? 'selected' : ''}>Solana</option>
+              <option value="ETHEREUM" ${savedNetwork === 'ETHEREUM' ? 'selected' : ''}>Ethereum</option>
+              <option value="BINANCE" ${savedNetwork === 'BINANCE' ? 'selected' : ''}>Binance</option>
+              <option value="POLYGON" ${savedNetwork === 'POLYGON' ? 'selected' : ''}>Polygon</option>
+              <option value="AVALANCHE" ${savedNetwork === 'AVALANCHE' ? 'selected' : ''}>Avalanche</option>
+            </select>
+          </div>
+          <button id="generate" class="prompt-send-button" disabled title="Generate Code (Enter)">
+            <svg class="arrow-right-icon" width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M6 3L11 8L6 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Action buttons below prompt field (Cursor AI style) -->
+      <div class="prompt-actions">
+        <button id="compile" class="action-button" disabled>Compile Code</button>
+        <button id="fixError" class="action-button" disabled>Fix Error</button>
+        <button id="analyze" class="action-button" disabled>Analyze Code</button>
+      </div>
     </div>
 
     <div id="constructorContainer" style="display:none;">
@@ -710,9 +735,9 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
       <input id="constructorArgs" placeholder='constructor args (e.g. 1000, "Name")' />
     </div>
 
-    <button id="deploy" disabled>Deploy Contract</button>
-
-    <pre id="output"></pre>
+    <div class="deploy-button-container">
+      <button id="deploy" class="action-button" disabled>Deploy Contract</button>
+    </div>
 
     <script nonce="${nonce}" src="${scriptUri}"></script>
   </body>
@@ -737,6 +762,7 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
       vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'Preprocessing contract idea...' },
         async () => {
+          let typingPromise: Promise<void> | null = null;
           try {
             // 1) Call preprocess API
             const { data: preprocessData } = await axios.post(
@@ -747,8 +773,11 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
             const preprocessText =
               preprocessData?.preprocessResponse || 'No preprocess response received.';
 
-            // 2) Start typing effect immediately
-            this.simulateTypingEffect(preprocessText, view);
+            // 2) Send user prompt to display first
+            view.webview.postMessage({ type: 'userMessage', text: prompt });
+            
+            // 3) Start typing effect immediately
+            typingPromise = this.simulateTypingEffect(preprocessText, view);
 
             // 3) While typing, trigger generateCode API
             const { data: genData } = await axios.post(
@@ -760,10 +789,23 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
               genData?.codegendResponseDto?.contractCode || '// No code returned';
             await this.insertCode(contractCode);
 
+            if (typingPromise) {
+              await typingPromise;
+            }
+
             vscode.window.showInformationMessage('✅ Code generated successfully.');
-            view.webview.postMessage({ type: 'status', message: '✅ Code generated successfully.' });
+            view.webview.postMessage({ type: 'assistantMessage', text: '✅ Code generated successfully.' });
             view.webview.postMessage({ type: 'enableCompileOnly' });
           } catch (err: any) {
+            if (typingPromise) {
+              try {
+                await typingPromise;
+              } catch {
+                // ignore typing errors
+              }
+            }
+            const errorMsg = `❌ Error generating code:\n\n${err.message}`;
+            view.webview.postMessage({ type: 'assistantMessage', text: errorMsg });
             vscode.window.showErrorMessage(`Error generating code: ${err.message}`);
           }
         }
@@ -795,10 +837,15 @@ Change the current code according to the user changes: ${prompt}
 
             await this.replaceEditorContent(updatedCode);
 
+            // Send user prompt to display
+            view.webview.postMessage({ type: 'userMessage', text: prompt });
+            
             vscode.window.showInformationMessage('✨ Contract updated based on your request.');
-            view.webview.postMessage({ type: 'status', message: '✨ Contract updated successfully.' });
+            view.webview.postMessage({ type: 'assistantMessage', text: '✨ Contract updated successfully.' });
             view.webview.postMessage({ type: 'enableCompileOnly' });
           } catch (err: any) {
+            const errorMsg = `❌ Error updating code:\n\n${err.message}`;
+            view.webview.postMessage({ type: 'assistantMessage', text: errorMsg });
             vscode.window.showErrorMessage(`Error updating code: ${err.message}`);
           }
         }
@@ -807,13 +854,19 @@ Change the current code according to the user changes: ${prompt}
   }
 
   private async simulateTypingEffect(text: string, view: vscode.WebviewView) {
+    // Start assistant message with empty content
+    view.webview.postMessage({ type: 'assistantMessageStart', text: '' });
+    
     const words = text.split(' ');
     let displayText = '';
     for (const word of words) {
       displayText += word + ' ';
-      view.webview.postMessage({ type: 'preprocessTyping', text: displayText });
+      view.webview.postMessage({ type: 'assistantMessageUpdate', text: displayText });
       await new Promise((r) => setTimeout(r, 20)); // typing speed
     }
+    
+    // Complete the message
+    view.webview.postMessage({ type: 'assistantMessageComplete', text: displayText });
   }
 
   private async handleCompile(view: vscode.WebviewView) {
@@ -823,6 +876,9 @@ Change the current code according to the user changes: ${prompt}
     const contractCode = editor.document.getText();
     if (contractCode.trim().length === 0)
       return vscode.window.showWarningMessage('File is empty. Nothing to compile.');
+
+    // Send user message for compile action
+    view.webview.postMessage({ type: 'userMessage', text: 'Compile Code' });
 
     vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: 'Compiling contract...' },
@@ -846,7 +902,7 @@ Change the current code according to the user changes: ${prompt}
             this._compiledBytecode = bytecode || null;
 
             vscode.window.showInformationMessage('✅ Code compiled successfully!');
-            view.webview.postMessage({ type: 'status', message: '✅ Compilation successful.' });
+            view.webview.postMessage({ type: 'assistantMessage', text: '✅ Compilation successful.' });
             view.webview.postMessage({ type: 'enableAnalyze' });
 
             // Enable Deploy only when abi and bytecode exist
@@ -854,13 +910,15 @@ Change the current code according to the user changes: ${prompt}
               view.webview.postMessage({ type: 'enableDeploy' });
             } else {
               // still enable compile/analyze path but warn deploy can't be enabled due to missing artifacts
-              view.webview.postMessage({ type: 'status', message: 'Compilation succeeded but ABI/bytecode missing — deploy disabled.' });
+              view.webview.postMessage({ type: 'assistantMessage', text: 'Compilation succeeded but ABI/bytecode missing — deploy disabled.' });
             }
           } else {
-            view.webview.postMessage({ type: 'error', error: errorStr });
+            view.webview.postMessage({ type: 'assistantMessage', text: `❌ Compilation Error:\n\n${errorStr}` });
             view.webview.postMessage({ type: 'enableFixError' });
           }
         } catch (err: any) {
+          const errorMsg = `❌ Error compiling code:\n\n${err.message}`;
+          view.webview.postMessage({ type: 'assistantMessage', text: errorMsg });
           vscode.window.showErrorMessage(`Error compiling code: ${err.message}`);
         }
       }
@@ -878,6 +936,9 @@ Change the current code according to the user changes: ${prompt}
       return;
     }
 
+    // Send user message for fix error action
+    view.webview.postMessage({ type: 'userMessage', text: 'Fix Error' });
+
     vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: 'Fixing code errors...' },
       async () => {
@@ -889,10 +950,13 @@ Change the current code according to the user changes: ${prompt}
 
           const fixedCode = data?.codegendResponseDto?.contractCode || '// No fix generated';
           await this.replaceEditorContent(fixedCode);
-
+          
           vscode.window.showInformationMessage('🛠️ Code fixed. Please compile again.');
+          view.webview.postMessage({ type: 'assistantMessage', text: '🛠️ Code fixed. Please compile again.' });
           view.webview.postMessage({ type: 'enableCompileOnly' });
         } catch (err: any) {
+          const errorMsg = `❌ Error fixing code:\n\n${err.message}`;
+          view.webview.postMessage({ type: 'assistantMessage', text: errorMsg });
           vscode.window.showErrorMessage(`Error fixing code: ${err.message}`);
         }
       }
@@ -904,6 +968,9 @@ Change the current code according to the user changes: ${prompt}
     if (!editor) return vscode.window.showInformationMessage('Open a file first.');
 
     const contractCode = editor.document.getText();
+
+    // Send user message for analyze action
+    view.webview.postMessage({ type: 'userMessage', text: 'Analyze Code' });
 
     vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: 'Analyzing contract...' },
@@ -918,15 +985,12 @@ Change the current code according to the user changes: ${prompt}
               modelToUse: 'gpt-40-mini',
             }
           );
-
+          
           const explanation = data?.result || 'No analysis returned.';
-          const formatted = explanation
-            .replace(/\n### /g, '\n\n**')
-            .replace(/\n- /g, '\n• ')
-            .replace(/\n/g, '<br>');
-
-          view.webview.postMessage({ type: 'analysis', text: formatted });
+          view.webview.postMessage({ type: 'assistantMessage', text: explanation });
         } catch (err: any) {
+          const errorMsg = `❌ Error analyzing code:\n\n${err.message}`;
+          view.webview.postMessage({ type: 'assistantMessage', text: errorMsg });
           vscode.window.showErrorMessage(`Error analyzing code: ${err.message}`);
         }
       }
@@ -936,15 +1000,19 @@ Change the current code according to the user changes: ${prompt}
   private async handleDeploy(view: vscode.WebviewView, constructorArgsStr: string) {
     // Deploy only for EVM-like networks (we are not handling Solana deploy here)
     if (!this._compiledAbi || !this._compiledBytecode) {
-      view.webview.postMessage({ type: 'status', message: 'ABI/bytecode unavailable — compile before deploying.' });
+      view.webview.postMessage({ type: 'assistantMessage', text: 'ABI/bytecode unavailable — compile before deploying.' });
       return;
     }
+
+    // Send user message for deploy action
+    const deployPrompt = constructorArgsStr ? `Deploy Contract (args: ${constructorArgsStr})` : 'Deploy Contract';
+    view.webview.postMessage({ type: 'userMessage', text: deployPrompt });
 
     // Basic parsing of constructor args: comma-separated values (no deep type parsing)
     // Example input: "1000, 'My Token', 'MTK'"
     const parsedArgs = this._parseConstructorArgs(constructorArgsStr);
 
-    view.webview.postMessage({ type: 'status', message: '🚀 Starting deployment...' });
+    view.webview.postMessage({ type: 'assistantMessage', text: '🚀 Starting deployment...' });
 
     try {
       // Create provider & wallet using hardcoded RPC and private key (replace for real use)
@@ -955,7 +1023,7 @@ Change the current code according to the user changes: ${prompt}
       const factory = new ethers.ContractFactory(this._compiledAbi, this._compiledBytecode, wallet);
 
       // Send status update
-      view.webview.postMessage({ type: 'status', message: 'Deploying contract — transaction sent.' });
+      view.webview.postMessage({ type: 'assistantMessageUpdate', text: 'Deploying contract — transaction sent...' });
 
       // Deploy with parsed args
       const contract = await factory.deploy(...parsedArgs);
@@ -973,11 +1041,11 @@ Change the current code according to the user changes: ${prompt}
 
       const address = await contract.getAddress();
 
-      view.webview.postMessage({ type: 'status', message: `✅ Contract deployed: ${address}` });
+      view.webview.postMessage({ type: 'assistantMessage', text: `✅ Contract deployed successfully!\n\nContract Address: ${address}` });
       vscode.window.showInformationMessage(`Contract deployed: ${address}`);
     } catch (err: any) {
       const errMsg = err?.message || String(err);
-      view.webview.postMessage({ type: 'status', message: `❌ Deployment failed: ${errMsg}` });
+      view.webview.postMessage({ type: 'assistantMessage', text: `❌ Deployment failed:\n\n${errMsg}` });
       vscode.window.showErrorMessage(`Deployment error: ${errMsg}`);
     }
   }
