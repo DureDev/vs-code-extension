@@ -365,6 +365,36 @@ button:disabled {
   font-family: var(--vscode-font-family, sans-serif);
 }
 
+.message-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground));
+  font-size: 12px;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--vscode-progressBar-background, #0e639c);
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-text {
+  letter-spacing: 0.2px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Markdown-like formatting for assistant messages - Cursor style */
 .message.assistant .message-content h1,
 .message.assistant .message-content h2,
@@ -476,7 +506,7 @@ button:disabled {
 
 /* Empty state */
 .conversation-container:empty::before {
-  content: 'Start a conversation by entering a prompt above...';
+  content: 'Start a conversation by entering a prompt below...';
   color: var(--vscode-descriptionForeground);
   font-style: italic;
   text-align: center;
