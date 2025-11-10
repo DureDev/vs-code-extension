@@ -618,6 +618,8 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
 
     webview.html = this._getHtmlForWebview(webview, this._selectedNetwork);
 
+    this.updateCompileButtonState(webviewView);
+
     webview.onDidReceiveMessage(async (msg) => {
       switch (msg.type) {
         case 'selectNetwork':
@@ -628,14 +630,17 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
 
         case 'generate':
           await this.handleGenerate(msg.prompt, webviewView);
+          this.updateCompileButtonState(webviewView);
           break;
 
         case 'compile':
           await this.handleCompile(webviewView);
+          this.updateCompileButtonState(webviewView);
           break;
 
         case 'fixError':
           await this.handleFixError(webviewView);
+          this.updateCompileButtonState(webviewView);
           break;
 
         case 'analyze':
@@ -645,6 +650,13 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
         case 'deploy':
           await this.handleDeploy(webviewView, msg.constructorArgs || '');
           break;
+      }
+    });
+
+    vscode.window.onDidChangeActiveTextEditor(() => this.updateCompileButtonState(webviewView));
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      if (vscode.window.activeTextEditor?.document === event.document) {
+        this.updateCompileButtonState(webviewView);
       }
     });
   }
@@ -746,14 +758,23 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
 
 
   private async handleGenerate(prompt: string, view: vscode.WebviewView) {
-    if (!this._selectedNetwork)
-      return vscode.window.showWarningMessage('Please select a network first.');
-    if (!prompt)
-      return vscode.window.showWarningMessage('Please enter a contract prompt.');
+    if (!this._selectedNetwork) {
+      const message = 'Please select a network first.';
+      view.webview.postMessage({ type: 'assistantMessage', text: message });
+      return vscode.window.showWarningMessage(message);
+    }
+    if (!prompt) {
+      const message = 'Please enter a contract prompt.';
+      view.webview.postMessage({ type: 'assistantMessage', text: message });
+      return vscode.window.showWarningMessage(message);
+    }
 
     const editor = vscode.window.activeTextEditor;
-    if (!editor)
-      return vscode.window.showInformationMessage('Please open a file before generating.');
+    if (!editor) {
+      const message = 'Please open a file before generating.';
+      view.webview.postMessage({ type: 'assistantMessage', text: message });
+      return vscode.window.showInformationMessage(message);
+    }
 
     const currentCode = editor.document.getText().trim();
 
@@ -773,10 +794,7 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
             const preprocessText =
               preprocessData?.preprocessResponse || 'No preprocess response received.';
 
-            // 2) Send user prompt to display first
-            view.webview.postMessage({ type: 'userMessage', text: prompt });
-            
-            // 3) Start typing effect immediately
+            // 2) Start typing effect immediately
             typingPromise = this.simulateTypingEffect(preprocessText, view);
 
             // 3) While typing, trigger generateCode API
@@ -837,9 +855,6 @@ Change the current code according to the user changes: ${prompt}
 
             await this.replaceEditorContent(updatedCode);
 
-            // Send user prompt to display
-            view.webview.postMessage({ type: 'userMessage', text: prompt });
-            
             vscode.window.showInformationMessage('✨ Contract updated based on your request.');
             view.webview.postMessage({ type: 'assistantMessage', text: '✨ Contract updated successfully.' });
             view.webview.postMessage({ type: 'enableCompileOnly' });
@@ -850,6 +865,17 @@ Change the current code according to the user changes: ${prompt}
           }
         }
       );
+    }
+  }
+
+  private updateCompileButtonState(view: vscode.WebviewView) {
+    const editor = vscode.window.activeTextEditor;
+    const hasCode = !!editor && editor.document.getText().trim().length > 0;
+
+    if (hasCode) {
+      view.webview.postMessage({ type: 'enableCompileOnly' });
+    } else {
+      view.webview.postMessage({ type: 'disableCompile' });
     }
   }
 
@@ -870,15 +896,19 @@ Change the current code according to the user changes: ${prompt}
   }
 
   private async handleCompile(view: vscode.WebviewView) {
+    if (!this._selectedNetwork) {
+      const message = 'Please select a network before compiling.';
+      view.webview.postMessage({ type: 'assistantMessage', text: message });
+      vscode.window.showWarningMessage(message);
+      return;
+    }
+
     const editor = vscode.window.activeTextEditor;
     if (!editor) return vscode.window.showInformationMessage('Open a file first.');
 
     const contractCode = editor.document.getText();
     if (contractCode.trim().length === 0)
       return vscode.window.showWarningMessage('File is empty. Nothing to compile.');
-
-    // Send user message for compile action
-    view.webview.postMessage({ type: 'userMessage', text: 'Compile Code' });
 
     vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: 'Compiling contract...' },
@@ -926,6 +956,13 @@ Change the current code according to the user changes: ${prompt}
   }
 
   private async handleFixError(view: vscode.WebviewView) {
+    if (!this._selectedNetwork) {
+      const message = 'Please select a network before fixing code.';
+      view.webview.postMessage({ type: 'assistantMessage', text: message });
+      vscode.window.showWarningMessage(message);
+      return;
+    }
+
     const editor = vscode.window.activeTextEditor;
     if (!editor) return vscode.window.showInformationMessage('Open a file first.');
 
@@ -935,9 +972,6 @@ Change the current code according to the user changes: ${prompt}
       vscode.window.showInformationMessage('No previous compile error found.');
       return;
     }
-
-    // Send user message for fix error action
-    view.webview.postMessage({ type: 'userMessage', text: 'Fix Error' });
 
     vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: 'Fixing code errors...' },
@@ -964,13 +998,17 @@ Change the current code according to the user changes: ${prompt}
   }
 
   private async handleAnalyze(view: vscode.WebviewView) {
+    if (!this._selectedNetwork) {
+      const message = 'Please select a network before analyzing.';
+      view.webview.postMessage({ type: 'assistantMessage', text: message });
+      vscode.window.showWarningMessage(message);
+      return;
+    }
+
     const editor = vscode.window.activeTextEditor;
     if (!editor) return vscode.window.showInformationMessage('Open a file first.');
 
     const contractCode = editor.document.getText();
-
-    // Send user message for analyze action
-    view.webview.postMessage({ type: 'userMessage', text: 'Analyze Code' });
 
     vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: 'Analyzing contract...' },
@@ -1003,10 +1041,6 @@ Change the current code according to the user changes: ${prompt}
       view.webview.postMessage({ type: 'assistantMessage', text: 'ABI/bytecode unavailable — compile before deploying.' });
       return;
     }
-
-    // Send user message for deploy action
-    const deployPrompt = constructorArgsStr ? `Deploy Contract (args: ${constructorArgsStr})` : 'Deploy Contract';
-    view.webview.postMessage({ type: 'userMessage', text: deployPrompt });
 
     // Basic parsing of constructor args: comma-separated values (no deep type parsing)
     // Example input: "1000, 'My Token', 'MTK'"

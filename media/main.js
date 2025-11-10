@@ -58,11 +58,14 @@ function sendGenerate() {
   const prompt = promptBox.value.trim();
   if (!prompt) return;
   
+  addUserMessage(prompt);
+  showLoadingIndicator('Generating code...');
+  
   vscode.postMessage({ type: 'generate', prompt: prompt });
   promptBox.value = '';
   autoResizeTextarea();
   updateGenerateButtonState();
-  // User message will be added by the extension
+  // Assistant response will be updated by the extension
 }
 
 // Network selector is handled by the hidden select overlay
@@ -114,24 +117,38 @@ btnGen.addEventListener('click', () => {
 })();
 
 btnComp.addEventListener('click', () => {
+  if (btnComp.disabled) return;
+
+  addUserMessage('Compile Code');
+  showLoadingIndicator('Compiling code...');
   vscode.postMessage({ type: 'compile' });
-  // User message will be added by the extension
 });
 
 btnFix.addEventListener('click', () => {
+  if (btnFix.disabled) return;
+
+  addUserMessage('Fix Error');
+  showLoadingIndicator('Fixing code...');
   vscode.postMessage({ type: 'fixError' });
-  // User message will be added by the extension
 });
 
 btnAnalyze.addEventListener('click', () => {
+  if (btnAnalyze.disabled) return;
+
+  addUserMessage('Analyze Code');
+  showLoadingIndicator('Analyzing code...');
   vscode.postMessage({ type: 'analyze' });
-  // User message will be added by the extension
 });
 
 btnDeploy.addEventListener('click', () => {
+  if (btnDeploy.disabled) return;
+
   const args = constructorArgsInput.value || '';
+  const deployPrompt = args ? `Deploy Contract (${args})` : 'Deploy Contract';
+
+  addUserMessage(deployPrompt);
+  showLoadingIndicator('Deploying contract...');
   vscode.postMessage({ type: 'deploy', constructorArgs: args });
-  // User message will be added by the extension
 });
 
 // Helper function to format markdown-like text
@@ -283,6 +300,26 @@ function addUserMessage(text) {
   scrollToBottom();
 }
 
+function showLoadingIndicator(message) {
+  const loadingMessage = message || 'Working...';
+
+  if (!currentAssistantMessage) {
+    const conversation = createConversationEntry('');
+    currentConversationEntry = conversation.entry;
+    currentAssistantMessage = conversation.assistantContent;
+  }
+
+  if (currentAssistantMessage) {
+    currentAssistantMessage.innerHTML = `
+      <div class="message-loading">
+        <div class="loading-spinner" role="status" aria-label="${loadingMessage}"></div>
+        <span class="loading-text">${loadingMessage}</span>
+      </div>
+    `;
+  }
+  scrollToBottom();
+}
+
 // Add assistant message
 function addAssistantMessage(text) {
   if (!currentConversationEntry) {
@@ -370,6 +407,9 @@ window.addEventListener('message', (e) => {
       break;
     case 'enableCompileOnly':
       btnComp.disabled = false; btnFix.disabled = true; btnAnalyze.disabled = true;
+      break;
+    case 'disableCompile':
+      btnComp.disabled = true; btnFix.disabled = true; btnAnalyze.disabled = true;
       break;
     case 'enableFixError':
       btnFix.disabled = false; btnAnalyze.disabled = true;
