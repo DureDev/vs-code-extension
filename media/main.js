@@ -444,6 +444,68 @@ function formatMessage(text) {
   return formattedLines.join('');
 }
 
+const MESSAGE_STATUS_CLASSES = ['message-status-success', 'message-status-error', 'message-status-deploy'];
+
+function determineMessageStatus(text) {
+  if (!text) {
+    return null;
+  }
+
+  const normalized = text.toLowerCase();
+  const hasExplicitError =
+    normalized.includes('compilation error') ||
+    normalized.includes('deployment failed') ||
+    normalized.startsWith('❌') ||
+    normalized.includes('error:') ||
+    normalized.includes('error ');
+
+  if (normalized.includes('contract deployed successfully') || normalized.includes('deployed successfully')) {
+    return 'deploy-success';
+  }
+
+  if (
+    normalized.includes('compilation successful') ||
+    normalized.includes('compiled successfully') ||
+    normalized.startsWith('✅') ||
+    normalized.includes('successfully') && normalized.includes('deploy')
+  ) {
+    return 'success';
+  }
+
+  if (hasExplicitError) {
+    return 'error';
+  }
+
+  return null;
+}
+
+function applyMessageStatus(element, text) {
+  if (!element) {
+    return;
+  }
+
+  MESSAGE_STATUS_CLASSES.forEach((cls) => element.classList.remove(cls));
+
+  const status = determineMessageStatus(text || '');
+  if (!status) {
+    return;
+  }
+
+  if (status === 'error') {
+    element.classList.add('message-status-error');
+    return;
+  }
+
+  if (status === 'deploy-success') {
+    element.classList.add('message-status-success', 'message-status-deploy');
+    return;
+  }
+
+  if (status === 'success') {
+    element.classList.add('message-status-success');
+  }
+}
+
 // Create a new conversation entry (user prompt + assistant response)
 function createConversationEntry(userPrompt) {
   const entryDiv = document.createElement('div');
@@ -508,6 +570,7 @@ function showLoadingIndicator(message) {
         <span class="loading-text">${loadingMessage}</span>
       </div>
     `;
+    applyMessageStatus(currentAssistantMessage, '');
   }
   scrollToBottom();
 }
@@ -523,6 +586,7 @@ function addAssistantMessage(text) {
   
   if (currentAssistantMessage) {
     currentAssistantMessage.innerHTML = formatMessage(text);
+    applyMessageStatus(currentAssistantMessage, text);
   }
   scrollToBottom();
   
@@ -542,6 +606,7 @@ function updateAssistantMessage(text) {
   
   if (currentAssistantMessage) {
     currentAssistantMessage.innerHTML = formatMessage(text);
+    applyMessageStatus(currentAssistantMessage, text);
     scrollToBottom();
   }
 }
@@ -550,6 +615,7 @@ function updateAssistantMessage(text) {
 function completeAssistantMessage(text) {
   if (currentAssistantMessage) {
     currentAssistantMessage.innerHTML = formatMessage(text);
+    applyMessageStatus(currentAssistantMessage, text);
   } else {
     addAssistantMessage(text);
   }

@@ -4,6 +4,11 @@ body {
   font-family: var(--vscode-font-family, sans-serif);
 }
 
+:root {
+  --cue-status-success: #3fdc78;
+  --cue-status-error: #ff6b6b;
+}
+
 /* Prompt wrapper containing container and actions */
 .prompt-wrapper {
   margin-bottom: 12px;
@@ -441,6 +446,21 @@ button:disabled {
   font-family: var(--vscode-font-family, sans-serif);
 }
 
+.message.assistant .message-content.message-status-success {
+  color: var(--cue-status-success, #3fdc78);
+}
+
+.message.assistant .message-content.message-status-error {
+  color: var(--cue-status-error, #ff6b6b);
+}
+
+.message.assistant .message-content.message-status-deploy {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-shadow: 0 0 12px rgba(63, 220, 120, 0.4);
+}
+
 .message-loading {
   display: flex;
   align-items: center;
@@ -478,7 +498,7 @@ button:disabled {
   margin-top: 16px;
   margin-bottom: 8px;
   font-weight: 600;
-  color: var(--vscode-editor-foreground);
+  color: inherit;
 }
 
 .message.assistant .message-content h1 {
@@ -544,7 +564,7 @@ button:disabled {
 
 .message.assistant .message-content strong {
   font-weight: 600;
-  color: var(--vscode-editor-foreground);
+  color: inherit;
 }
 
 .message.assistant .message-content em {
