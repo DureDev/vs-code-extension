@@ -709,7 +709,15 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
         <!-- Network and Generate button below input field -->
         <div class="prompt-controls">
           <div class="network-selector-wrapper">
-            <button id="networkSelector" class="network-selector" title="Select Network">
+            <button
+              id="networkSelector"
+              class="network-selector"
+              type="button"
+              title="Select Network"
+              aria-haspopup="listbox"
+              aria-controls="networkDropdown"
+              aria-expanded="false"
+            >
               <span class="network-text">Network</span>
               <svg class="chevron-down" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -723,6 +731,79 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
               <option value="POLYGON" ${savedNetwork === 'POLYGON' ? 'selected' : ''}>Polygon</option>
               <option value="AVALANCHE" ${savedNetwork === 'AVALANCHE' ? 'selected' : ''}>Avalanche</option>
             </select>
+            <div
+              id="networkDropdown"
+              class="network-dropdown"
+              role="listbox"
+              aria-labelledby="networkSelector"
+            >
+              <div
+                class="network-dropdown-option"
+                role="option"
+                data-value=""
+                aria-selected="${!savedNetwork ? 'true' : 'false'}"
+              >
+                <span class="network-option-label">Network</span>
+                <svg class="network-dropdown-check" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 6.5L5.2 8.5L9 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div
+                class="network-dropdown-option"
+                role="option"
+                data-value="SOLANA"
+                aria-selected="${savedNetwork === 'SOLANA' ? 'true' : 'false'}"
+              >
+                <span class="network-option-label">Solana</span>
+                <svg class="network-dropdown-check" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 6.5L5.2 8.5L9 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div
+                class="network-dropdown-option"
+                role="option"
+                data-value="ETHEREUM"
+                aria-selected="${savedNetwork === 'ETHEREUM' ? 'true' : 'false'}"
+              >
+                <span class="network-option-label">Ethereum</span>
+                <svg class="network-dropdown-check" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 6.5L5.2 8.5L9 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div
+                class="network-dropdown-option"
+                role="option"
+                data-value="BINANCE"
+                aria-selected="${savedNetwork === 'BINANCE' ? 'true' : 'false'}"
+              >
+                <span class="network-option-label">Binance</span>
+                <svg class="network-dropdown-check" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 6.5L5.2 8.5L9 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div
+                class="network-dropdown-option"
+                role="option"
+                data-value="POLYGON"
+                aria-selected="${savedNetwork === 'POLYGON' ? 'true' : 'false'}"
+              >
+                <span class="network-option-label">Polygon</span>
+                <svg class="network-dropdown-check" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 6.5L5.2 8.5L9 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div
+                class="network-dropdown-option"
+                role="option"
+                data-value="AVALANCHE"
+                aria-selected="${savedNetwork === 'AVALANCHE' ? 'true' : 'false'}"
+              >
+                <span class="network-option-label">Avalanche</span>
+                <svg class="network-dropdown-check" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 6.5L5.2 8.5L9 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
           </div>
           <button id="generate" class="prompt-send-button" disabled title="Generate Code (Enter)">
             <svg class="arrow-right-icon" width="14" height="14" viewBox="0 0 16 16" fill="none">

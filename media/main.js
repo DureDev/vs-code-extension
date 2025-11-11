@@ -2,6 +2,8 @@ const vscode = acquireVsCodeApi();
 
 const select = document.getElementById('network');
 const networkSelector = document.getElementById('networkSelector');
+const networkDropdown = document.getElementById('networkDropdown');
+const networkSelectorWrapper = document.querySelector('.network-selector-wrapper');
 const btnGen = document.getElementById('generate');
 const btnComp = document.getElementById('compile');
 const btnFix = document.getElementById('fixError');
@@ -16,6 +18,195 @@ const constructorArgsInput = document.getElementById('constructorArgs');
 let currentConversationEntry = null;
 let currentAssistantMessage = null;
 let hasUserInteractedWithNetwork = false;
+let isNetworkDropdownOpen = false;
+let networkDropdownActiveIndex = -1;
+
+function getNetworkDropdownOptions() {
+  if (!networkDropdown) {
+    return [];
+  }
+  return Array.from(networkDropdown.querySelectorAll('.network-dropdown-option'));
+}
+
+function setNetworkDropdownActiveIndex(index) {
+  const options = getNetworkDropdownOptions();
+  networkDropdownActiveIndex = index;
+  options.forEach((option, idx) => {
+    option.classList.toggle('is-focused', idx === index);
+    if (idx === index) {
+      option.scrollIntoView({ block: 'nearest' });
+    }
+  });
+}
+
+function syncNetworkDropdownSelection() {
+  if (!networkDropdown) {
+    return;
+  }
+  const currentValue = select.value || '';
+  const options = getNetworkDropdownOptions();
+  let selectedIndex = -1;
+  options.forEach((option, index) => {
+    const isSelected = option.dataset.value === currentValue;
+    option.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+    if (isSelected) {
+      selectedIndex = index;
+    }
+  });
+  if (selectedIndex === -1 && options.length) {
+    selectedIndex = 0;
+  }
+  if (isNetworkDropdownOpen) {
+    setNetworkDropdownActiveIndex(selectedIndex);
+  } else {
+    networkDropdownActiveIndex = selectedIndex;
+  }
+}
+
+function openNetworkDropdown() {
+  if (!networkDropdown || isNetworkDropdownOpen) {
+    return;
+  }
+  isNetworkDropdownOpen = true;
+  syncNetworkDropdownSelection();
+  networkDropdown.classList.add('open');
+  networkSelector.classList.add('is-open');
+  networkSelector.setAttribute('aria-expanded', 'true');
+  document.addEventListener('click', handleNetworkDropdownClickOutside, true);
+  document.addEventListener('keydown', handleNetworkDropdownKeydown, true);
+}
+
+function closeNetworkDropdown({ focusSelector = false } = {}) {
+  if (!networkDropdown || !isNetworkDropdownOpen) {
+    return;
+  }
+  networkDropdown.classList.remove('open');
+  networkSelector.classList.remove('is-open');
+  networkSelector.setAttribute('aria-expanded', 'false');
+  isNetworkDropdownOpen = false;
+  setNetworkDropdownActiveIndex(-1);
+  document.removeEventListener('click', handleNetworkDropdownClickOutside, true);
+  document.removeEventListener('keydown', handleNetworkDropdownKeydown, true);
+  if (focusSelector) {
+    networkSelector.focus();
+  }
+}
+
+function toggleNetworkDropdown() {
+  if (isNetworkDropdownOpen) {
+    closeNetworkDropdown();
+  } else {
+    openNetworkDropdown();
+  }
+}
+
+function handleNetworkDropdownClickOutside(event) {
+  if (!isNetworkDropdownOpen) {
+    return;
+  }
+  if (
+    networkSelectorWrapper &&
+    (networkSelectorWrapper === event.target || networkSelectorWrapper.contains(event.target))
+  ) {
+    return;
+  }
+  closeNetworkDropdown();
+}
+
+function moveWithinNetworkDropdown(direction) {
+  const options = getNetworkDropdownOptions();
+  if (!options.length) {
+    return;
+  }
+  let nextIndex = networkDropdownActiveIndex;
+  if (nextIndex === -1) {
+    nextIndex = options.findIndex((option) => option.dataset.value === (select.value || ''));
+  }
+  if (nextIndex === -1) {
+    nextIndex = 0;
+  } else {
+    nextIndex = (nextIndex + direction + options.length) % options.length;
+  }
+  setNetworkDropdownActiveIndex(nextIndex);
+}
+
+function selectNetworkOptionElement(optionElement) {
+  if (!optionElement) {
+    return;
+  }
+  const value = optionElement.dataset.value || '';
+  hasUserInteractedWithNetwork = value !== '';
+  if (select.value !== value) {
+    select.value = value;
+    const changeEvent = new Event('change', { bubbles: true });
+    select.dispatchEvent(changeEvent);
+  } else {
+    updateNetworkSelectorText({ force: hasUserInteractedWithNetwork });
+  }
+  closeNetworkDropdown({ focusSelector: true });
+}
+
+function handleNetworkDropdownKeydown(event) {
+  if (!isNetworkDropdownOpen) {
+    return;
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeNetworkDropdown({ focusSelector: true });
+    return;
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    moveWithinNetworkDropdown(1);
+    return;
+  }
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    moveWithinNetworkDropdown(-1);
+    return;
+  }
+  if (event.key === 'Enter' || event.key === ' ') {
+    const options = getNetworkDropdownOptions();
+    const activeOption = options[networkDropdownActiveIndex];
+    if (activeOption) {
+      event.preventDefault();
+      selectNetworkOptionElement(activeOption);
+    }
+    return;
+  }
+  if (event.key === 'Tab') {
+    closeNetworkDropdown();
+  }
+}
+
+if (networkSelector) {
+  networkSelector.addEventListener('click', (event) => {
+    event.preventDefault();
+    toggleNetworkDropdown();
+  });
+
+  networkSelector.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!isNetworkDropdownOpen) {
+        openNetworkDropdown();
+      }
+      moveWithinNetworkDropdown(event.key === 'ArrowDown' ? 1 : -1);
+    }
+  });
+}
+
+if (networkDropdown) {
+  networkDropdown.addEventListener('click', (event) => {
+    const optionElement = event.target.closest('.network-dropdown-option');
+    if (!optionElement) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    selectNetworkOptionElement(optionElement);
+  });
+}
 
 // Auto-resize textarea (Cursor AI style)
 function autoResizeTextarea() {
@@ -86,6 +277,7 @@ function updateNetworkSelectorText(options = {}) {
   const selectedOption = select.options[select.selectedIndex];
   const label = selectedOption ? selectedOption.textContent.trim() : 'Network';
   networkText.textContent = label || 'Network';
+  syncNetworkDropdownSelection();
 }
 
 select.addEventListener('change', () => {
