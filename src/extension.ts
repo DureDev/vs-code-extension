@@ -685,7 +685,7 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
       content="default-src 'none';
                img-src ${webview.cspSource} blob: data:;
                style-src ${webview.cspSource} 'unsafe-inline';
-               script-src 'nonce-${nonce}';"
+               script-src ${webview.cspSource} 'nonce-${nonce}';"
     />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
