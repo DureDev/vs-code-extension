@@ -340,6 +340,7 @@ btnDeploy.addEventListener('click', () => {
 
   addUserMessage(deployPrompt);
   showLoadingIndicator('Deploying contract...');
+  btnDeploy.disabled = true;
   vscode.postMessage({ type: 'deploy', constructorArgs: args });
 });
 
@@ -677,6 +678,9 @@ window.addEventListener('message', (e) => {
       break;
     case 'enableDeploy':
       btnDeploy.disabled = false;
+      break;
+    case 'disableDeploy':
+      btnDeploy.disabled = true;
       break;
   }
 });

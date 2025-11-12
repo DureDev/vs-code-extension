@@ -1127,6 +1127,7 @@ Change the current code according to the user changes: ${prompt}
     // Example input: "1000, 'My Token', 'MTK'"
     const parsedArgs = this._parseConstructorArgs(constructorArgsStr);
 
+    view.webview.postMessage({ type: 'disableDeploy' });
     view.webview.postMessage({ type: 'assistantMessage', text: '🚀 Starting deployment...' });
 
     try {
@@ -1162,6 +1163,8 @@ Change the current code according to the user changes: ${prompt}
       const errMsg = err?.message || String(err);
       view.webview.postMessage({ type: 'assistantMessage', text: `❌ Deployment failed:\n\n${errMsg}` });
       vscode.window.showErrorMessage(`Deployment error: ${errMsg}`);
+    } finally {
+      view.webview.postMessage({ type: 'enableDeploy' });
     }
   }
 
