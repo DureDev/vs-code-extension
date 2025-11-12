@@ -600,7 +600,12 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
   private readonly PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 
   constructor(private readonly _extensionUri: vscode.Uri, private readonly _context: vscode.ExtensionContext) {
-    this._selectedNetwork = this._context.globalState.get('cuechainSelectedNetwork', null);
+    const storedNetwork = this._context.globalState.get<string | null>('cuechainSelectedNetwork', null);
+    const normalizedNetwork = (storedNetwork ?? '').toLowerCase();
+    this._selectedNetwork = normalizedNetwork || null;
+    if (storedNetwork && normalizedNetwork !== storedNetwork) {
+      void this._context.globalState.update('cuechainSelectedNetwork', normalizedNetwork);
+    }
   }
 
   public getLastError() {
@@ -622,11 +627,13 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
 
     webview.onDidReceiveMessage(async (msg) => {
       switch (msg.type) {
-        case 'selectNetwork':
-          this._selectedNetwork = msg.network;
-          this._context.globalState.update('cuechainSelectedNetwork', msg.network);
-          webview.postMessage({ type: 'networkSelected', network: msg.network });
+        case 'selectNetwork': {
+          const network = typeof msg.network === 'string' ? msg.network.toLowerCase() : '';
+          this._selectedNetwork = network || null;
+          void this._context.globalState.update('cuechainSelectedNetwork', network);
+          webview.postMessage({ type: 'networkSelected', network });
           break;
+        }
 
         case 'generate':
           await this.handleGenerate(msg.prompt, webviewView);
@@ -669,6 +676,8 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
   const styleUri = webview.asWebviewUri(
     vscode.Uri.joinPath(this._extensionUri, 'media', 'style.css')
   );
+
+  const normalizedSavedNetwork = (savedNetwork ?? '').toLowerCase();
 
   // Nonce for CSP
   const nonce = getNonce();
@@ -724,12 +733,12 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
               </svg>
             </button>
             <select id="network" class="network-select-hidden">
-              <option value="" ${savedNetwork ? '' : 'selected'}>Network</option>
-              <option value="solana" ${savedNetwork === 'solana' ? 'selected' : ''}>Solana</option>
-              <option value="ethereum" ${savedNetwork === 'ethereum' ? 'selected' : ''}>Ethereum</option>
-              <option value="binance" ${savedNetwork === 'binance' ? 'selected' : ''}>Binance</option>
-              <option value="polygon" ${savedNetwork === 'polygon' ? 'selected' : ''}>Polygon</option>
-              <option value="avalanche" ${savedNetwork === 'avalanche' ? 'selected' : ''}>Avalanche</option>
+              <option value="" ${normalizedSavedNetwork ? '' : 'selected'}>Network</option>
+              <option value="solana" ${normalizedSavedNetwork === 'solana' ? 'selected' : ''}>Solana</option>
+              <option value="ethereum" ${normalizedSavedNetwork === 'ethereum' ? 'selected' : ''}>Ethereum</option>
+              <option value="binance" ${normalizedSavedNetwork === 'binance' ? 'selected' : ''}>Binance</option>
+              <option value="polygon" ${normalizedSavedNetwork === 'polygon' ? 'selected' : ''}>Polygon</option>
+              <option value="avalanche" ${normalizedSavedNetwork === 'avalanche' ? 'selected' : ''}>Avalanche</option>
             </select>
             <div
               id="networkDropdown"
@@ -741,7 +750,7 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
                 class="network-dropdown-option"
                 role="option"
                 data-value=""
-                aria-selected="${!savedNetwork ? 'true' : 'false'}"
+                aria-selected="${!normalizedSavedNetwork ? 'true' : 'false'}"
               >
                 <span class="network-option-label">Network</span>
                 <svg class="network-dropdown-check" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -751,8 +760,8 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
               <div
                 class="network-dropdown-option"
                 role="option"
-                data-value="SOLANA"
-                aria-selected="${savedNetwork === 'SOLANA' ? 'true' : 'false'}"
+                data-value="solana"
+                aria-selected="${normalizedSavedNetwork === 'solana' ? 'true' : 'false'}"
               >
                 <span class="network-option-label">Solana</span>
                 <svg class="network-dropdown-check" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -762,8 +771,8 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
               <div
                 class="network-dropdown-option"
                 role="option"
-                data-value="ETHEREUM"
-                aria-selected="${savedNetwork === 'ETHEREUM' ? 'true' : 'false'}"
+                data-value="ethereum"
+                aria-selected="${normalizedSavedNetwork === 'ethereum' ? 'true' : 'false'}"
               >
                 <span class="network-option-label">Ethereum</span>
                 <svg class="network-dropdown-check" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -773,8 +782,8 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
               <div
                 class="network-dropdown-option"
                 role="option"
-                data-value="BINANCE"
-                aria-selected="${savedNetwork === 'BINANCE' ? 'true' : 'false'}"
+                data-value="binance"
+                aria-selected="${normalizedSavedNetwork === 'binance' ? 'true' : 'false'}"
               >
                 <span class="network-option-label">Binance</span>
                 <svg class="network-dropdown-check" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -784,8 +793,8 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
               <div
                 class="network-dropdown-option"
                 role="option"
-                data-value="POLYGON"
-                aria-selected="${savedNetwork === 'POLYGON' ? 'true' : 'false'}"
+                data-value="polygon"
+                aria-selected="${normalizedSavedNetwork === 'polygon' ? 'true' : 'false'}"
               >
                 <span class="network-option-label">Polygon</span>
                 <svg class="network-dropdown-check" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -795,8 +804,8 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
               <div
                 class="network-dropdown-option"
                 role="option"
-                data-value="AVALANCHE"
-                aria-selected="${savedNetwork === 'AVALANCHE' ? 'true' : 'false'}"
+                data-value="avalanche"
+                aria-selected="${normalizedSavedNetwork === 'avalanche' ? 'true' : 'false'}"
               >
                 <span class="network-option-label">Avalanche</span>
                 <svg class="network-dropdown-check" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1017,7 +1026,7 @@ Change the current code according to the user changes: ${prompt}
             view.webview.postMessage({ type: 'enableAnalyze' });
 
             // Enable Deploy only when abi and bytecode exist
-            if (this._compiledAbi && this._compiledBytecode) {
+            if (this._compiledAbi || this._compiledBytecode) {
               view.webview.postMessage({ type: 'enableDeploy' });
             } else {
               // still enable compile/analyze path but warn deploy can't be enabled due to missing artifacts
