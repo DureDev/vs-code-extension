@@ -285,7 +285,7 @@ select.addEventListener('change', () => {
   hasUserInteractedWithNetwork = network !== '';
   updateNetworkSelectorText({ force: hasUserInteractedWithNetwork });
   vscode.postMessage({ type: 'selectNetwork', network });
-  constructorContainer.style.display = (network === 'SOLANA' || network === '') ? 'none' : 'block';
+  constructorContainer.style.display = (network === 'solana' || network === '') ? 'none' : 'block';
   updateGenerateButtonState();
 });
 
@@ -340,6 +340,7 @@ btnDeploy.addEventListener('click', () => {
 
   addUserMessage(deployPrompt);
   showLoadingIndicator('Deploying contract...');
+  btnDeploy.disabled = true;
   vscode.postMessage({ type: 'deploy', constructorArgs: args });
 });
 
@@ -636,7 +637,7 @@ window.addEventListener('message', (e) => {
     case 'networkSelected':
       select.value = msg.network || '';
       hasUserInteractedWithNetwork = msg.network !== '';
-      constructorContainer.style.display = (msg.network === 'SOLANA' || msg.network === '') ? 'none' : 'block';
+      constructorContainer.style.display = (msg.network === 'solana' || msg.network === '') ? 'none' : 'block';
       updateNetworkSelectorText({ force: hasUserInteractedWithNetwork });
       updateGenerateButtonState();
       break;
@@ -677,6 +678,9 @@ window.addEventListener('message', (e) => {
       break;
     case 'enableDeploy':
       btnDeploy.disabled = false;
+      break;
+    case 'disableDeploy':
+      btnDeploy.disabled = true;
       break;
   }
 });
