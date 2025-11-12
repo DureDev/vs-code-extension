@@ -725,11 +725,11 @@ class CuechainViewProvider implements vscode.WebviewViewProvider {
             </button>
             <select id="network" class="network-select-hidden">
               <option value="" ${savedNetwork ? '' : 'selected'}>Network</option>
-              <option value="SOLANA" ${savedNetwork === 'SOLANA' ? 'selected' : ''}>Solana</option>
-              <option value="ETHEREUM" ${savedNetwork === 'ETHEREUM' ? 'selected' : ''}>Ethereum</option>
-              <option value="BINANCE" ${savedNetwork === 'BINANCE' ? 'selected' : ''}>Binance</option>
-              <option value="POLYGON" ${savedNetwork === 'POLYGON' ? 'selected' : ''}>Polygon</option>
-              <option value="AVALANCHE" ${savedNetwork === 'AVALANCHE' ? 'selected' : ''}>Avalanche</option>
+              <option value="solana" ${savedNetwork === 'solana' ? 'selected' : ''}>Solana</option>
+              <option value="ethereum" ${savedNetwork === 'ethereum' ? 'selected' : ''}>Ethereum</option>
+              <option value="binance" ${savedNetwork === 'binance' ? 'selected' : ''}>Binance</option>
+              <option value="polygon" ${savedNetwork === 'polygon' ? 'selected' : ''}>Polygon</option>
+              <option value="avalanche" ${savedNetwork === 'avalanche' ? 'selected' : ''}>Avalanche</option>
             </select>
             <div
               id="networkDropdown"
