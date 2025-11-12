@@ -445,14 +445,20 @@ function formatMessage(text) {
   return formattedLines.join('');
 }
 
-const MESSAGE_STATUS_CLASSES = ['message-status-success', 'message-status-error', 'message-status-deploy'];
+const STATUS_CLASS_MAP = {
+  success: ['message-status-success'],
+  error: ['message-status-error'],
+  warning: ['message-status-warning'],
+  'deploy-success': ['message-status-success', 'message-status-deploy'],
+};
 
 function determineMessageStatus(text) {
   if (!text) {
     return null;
   }
 
-  const normalized = text.toLowerCase();
+  const firstLine = text.split('\n')[0] || '';
+  const normalized = firstLine.toLowerCase();
   const hasExplicitError =
     normalized.includes('compilation error') ||
     normalized.includes('deployment failed') ||
@@ -473,6 +479,16 @@ function determineMessageStatus(text) {
     return 'success';
   }
 
+  const hasWarning =
+    normalized.startsWith('⚠️') ||
+    normalized.includes('please select a network') ||
+    normalized.includes('warning:') ||
+    normalized.includes('warning ');
+
+  if (hasWarning) {
+    return 'warning';
+  }
+
   if (hasExplicitError) {
     return 'error';
   }
@@ -480,30 +496,55 @@ function determineMessageStatus(text) {
   return null;
 }
 
-function applyMessageStatus(element, text) {
+function splitMessageStatus(text) {
+  if (!text) {
+    return { status: null, statusLine: '', body: '' };
+  }
+
+  const lines = text.split('\n');
+  const statusLine = lines[0] || '';
+  const status = determineMessageStatus(statusLine);
+
+  if (!status) {
+    return { status: null, statusLine: '', body: text };
+  }
+
+  let body = lines.slice(1).join('\n');
+  body = body.replace(/^\n+/, '');
+
+  return { status, statusLine, body };
+}
+
+function renderAssistantMessage(element, text) {
   if (!element) {
     return;
   }
 
-  MESSAGE_STATUS_CLASSES.forEach((cls) => element.classList.remove(cls));
+  const rawText = text || '';
+  const { status, statusLine, body } = splitMessageStatus(rawText);
 
-  const status = determineMessageStatus(text || '');
+  element.classList.remove('message-content--has-status');
+  element.innerHTML = '';
+
   if (!status) {
+    element.innerHTML = formatMessage(rawText);
     return;
   }
 
-  if (status === 'error') {
-    element.classList.add('message-status-error');
-    return;
-  }
+  element.classList.add('message-content--has-status');
 
-  if (status === 'deploy-success') {
-    element.classList.add('message-status-success', 'message-status-deploy');
-    return;
-  }
+  const statusElement = document.createElement('div');
+  statusElement.classList.add('message-status-line');
+  const statusClasses = STATUS_CLASS_MAP[status] || [];
+  statusClasses.forEach((cls) => statusElement.classList.add(cls));
+  statusElement.innerHTML = formatMessage(statusLine);
+  element.appendChild(statusElement);
 
-  if (status === 'success') {
-    element.classList.add('message-status-success');
+  if (body && body.trim().length) {
+    const bodyElement = document.createElement('div');
+    bodyElement.classList.add('message-body');
+    bodyElement.innerHTML = formatMessage(body);
+    element.appendChild(bodyElement);
   }
 }
 
@@ -571,7 +612,6 @@ function showLoadingIndicator(message) {
         <span class="loading-text">${loadingMessage}</span>
       </div>
     `;
-    applyMessageStatus(currentAssistantMessage, '');
   }
   scrollToBottom();
 }
@@ -586,8 +626,7 @@ function addAssistantMessage(text) {
   }
   
   if (currentAssistantMessage) {
-    currentAssistantMessage.innerHTML = formatMessage(text);
-    applyMessageStatus(currentAssistantMessage, text);
+    renderAssistantMessage(currentAssistantMessage, text);
   }
   scrollToBottom();
   
@@ -606,8 +645,7 @@ function updateAssistantMessage(text) {
   }
   
   if (currentAssistantMessage) {
-    currentAssistantMessage.innerHTML = formatMessage(text);
-    applyMessageStatus(currentAssistantMessage, text);
+    renderAssistantMessage(currentAssistantMessage, text);
     scrollToBottom();
   }
 }
@@ -615,8 +653,7 @@ function updateAssistantMessage(text) {
 // Complete assistant message
 function completeAssistantMessage(text) {
   if (currentAssistantMessage) {
-    currentAssistantMessage.innerHTML = formatMessage(text);
-    applyMessageStatus(currentAssistantMessage, text);
+    renderAssistantMessage(currentAssistantMessage, text);
   } else {
     addAssistantMessage(text);
   }
