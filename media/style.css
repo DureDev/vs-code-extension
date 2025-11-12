@@ -446,19 +446,37 @@ button:disabled {
   font-family: var(--vscode-font-family, sans-serif);
 }
 
-.message.assistant .message-content.message-status-success {
+.message.assistant .message-content.message-content--has-status {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message.assistant .message-content .message-status-line {
+  font-weight: 600;
+}
+
+.message.assistant .message-content .message-status-line.message-status-success {
   color: var(--cue-status-success, #3fdc78);
 }
 
-.message.assistant .message-content.message-status-error {
+.message.assistant .message-content .message-status-line.message-status-error {
   color: var(--cue-status-error, #ff6b6b);
 }
 
-.message.assistant .message-content.message-status-deploy {
+.message.assistant .message-content .message-status-line.message-status-warning {
+  color: var(--cue-status-warning, #f4c542);
+}
+
+.message.assistant .message-content .message-status-line.message-status-deploy {
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.2px;
   text-shadow: 0 0 12px rgba(63, 220, 120, 0.4);
+}
+
+.message.assistant .message-content .message-body {
+  color: var(--vscode-editor-foreground);
 }
 
 .message-loading {
